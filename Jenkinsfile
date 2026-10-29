@@ -1,41 +1,35 @@
 pipeline {
     agent any
-    
+
     environment {
-        DOCKER_CREDENTIALS_ID = 'docker-hub-credentials'
-        IMAGE_NAME = 'areebakhan49' // Agar aapka Docker Hub username different hai toh 'malaikamunir1' ki jagah wo likhein
+        
+        DOCKER_HUB_USER = 'areebakhan49'
+        IMAGE_NAME = 'devops-app'
     }
-    
+
     stages {
-        stage('Stage 1: Pull code from GitHub') {
+        stage('Checkout') {
             steps {
+                echo 'Pulling code from GitHub...'
                 checkout scm
             }
         }
-        
-        stage('Stage 2: Build Docker image') {
+
+        stage('Build Docker Image') {
             steps {
-                script {
-                    app = docker.build("${IMAGE_NAME}:${env.BUILD_NUMBER}")
-                }
+                echo 'Building Docker Image...'
+                sh 'docker build -t $DOCKER_HUB_USER/$IMAGE_NAME:latest .'
             }
         }
-        
-        stage('Stage 3: Push image to Docker Hub') {
+
+        stage('Push to Docker Hub') {
             steps {
-                script {
-                    docker.withRegistry('https://index.docker.io/v1/', "${DOCKER_CREDENTIALS_ID}") {
-                        app.push("latest")
-                        app.push("${env.BUILD_NUMBER}")
-                    }
+                echo 'Logging in and Pushing Image...'
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                    sh 'docker push $DOCKER_HUB_USER/$IMAGE_NAME:latest'
                 }
             }
-        }
-    }
-    
-    post {
-        always {
-            echo "Pipeline execution finished!"
         }
     }
 }
